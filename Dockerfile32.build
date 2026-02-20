@@ -1,0 +1,72 @@
+FROM debian:stable
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PATH="/root/.cargo/bin:${PATH}"
+
+# 1. Instalar herramientas de compilación y Qt5 (amd64) para uso general
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    build-essential git curl cmake clang ninja-build \
+    # Qt5 base y módulos comunes (amd64)
+    qtbase5-dev qtbase5-dev-tools qtdeclarative5-dev qttools5-dev libqt5svg5-dev \
+    # Otras dependencias comunes (amd64)
+    libcurl4-openssl-dev libssl-dev libasound2-dev libpulse-dev libjack-jackd2-dev \
+    libx11-dev libxi-dev libxext-dev libxfixes-dev libxcursor-dev libxrandr-dev \
+    libxss-dev libxtst-dev libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev \
+    libvulkan-dev vulkan-validationlayers libdrm-dev libgbm-dev \
+    libudev-dev libevdev-dev libusb-1.0-0-dev libdbus-1-dev libbluetooth-dev bluez \
+    libibus-1.0-dev libxkbcommon-dev libpng-dev libzip-dev libcups2-dev \
+    libwayland-dev libunwind-dev \
+    # Nota: libpipewire, libsndio y libdecor no se instalan (no tienen soporte i386)
+    && rm -rf /var/lib/apt/lists/*
+
+# 2. Habilitar arquitectura i386 y añadir bibliotecas de 32 bits
+RUN dpkg --add-architecture i386 && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    gcc-multilib g++-multilib \
+    # Qt5 para i386 (módulos disponibles)
+    qtbase5-dev:i386 qtdeclarative5-dev:i386 qttools5-dev:i386 libqt5svg5-dev:i386 \
+    # Bibliotecas de 32 bits para desarrollo (las mismas que arriba, pero versión i386)
+    libcurl4-openssl-dev:i386 \
+    libssl-dev:i386 \
+    libasound2-dev:i386 \
+    libpulse-dev:i386 \
+    libjack-jackd2-dev:i386 \
+    libx11-dev:i386 \
+    libxi-dev:i386 \
+    libxext-dev:i386 \
+    libxfixes-dev:i386 \
+    libxcursor-dev:i386 \
+    libxrandr-dev:i386 \
+    libxss-dev:i386 \
+    libxtst-dev:i386 \
+    libgl1-mesa-dev:i386 \
+    libegl1-mesa-dev:i386 \
+    libgles2-mesa-dev:i386 \
+    libvulkan-dev:i386 \
+    libdrm-dev:i386 \
+    libgbm-dev:i386 \
+    libudev-dev:i386 \
+    libevdev-dev:i386 \
+    libusb-1.0-0-dev:i386 \
+    libdbus-1-dev:i386 \
+    libbluetooth-dev:i386 \
+    libibus-1.0-dev:i386 \
+    libxkbcommon-dev:i386 \
+    libpng-dev:i386 \
+    libzip-dev:i386 \
+    libcups2-dev:i386 \
+    libwayland-dev:i386 \
+    libunwind-dev:i386 \
+    # Nota: Las siguientes bibliotecas no están disponibles para i386 en Debian, se omiten:
+    #   libpipewire-0.3-dev, libsndio-dev, libdecor-0-dev
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Instalar Rust y añadir target de 32 bits
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    rustup target add i686-unknown-linux-gnu
+
+WORKDIR /project
+RUN git config --global --add safe.directory /project
+
+CMD ["/bin/bash"]
