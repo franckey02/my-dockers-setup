@@ -52,6 +52,7 @@ RUN dpkg --add-architecture i386 && \
     libpng-dev:i386 \
     libzip-dev:i386 \
     libcups2-dev:i386 \
+    qtwebengine5-dev:i386 \
     libwayland-dev:i386 \
     libunwind-dev:i386 \
     #   libpipewire-0.3-dev, libsndio-dev, libdecor-0-dev
