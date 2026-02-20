@@ -16,7 +16,7 @@ jobs:
           repository: 'minecraft-linux/mcpelauncher-manifest'
           ref: 'ng'
           submodules: 'recursive'
-          fetch-depth: 0 # Necesario para encontrar commits antiguos si no están en el headless actual
+          fetch-depth: 0
 
       - name: Aplicar commit específico
         run: git checkout 36582b9
@@ -31,6 +31,9 @@ jobs:
       - name: Compilación con Clang y Optimizaciones
         run: |
           docker run --rm -v ${{ github.workspace }}:/project mcpelauncher-builder /bin/bash -c "
+            # Instalar dependencias faltantes identificadas en el log
+            apt-get update && apt-get install -y zlib1g-dev:i386 libpng-dev:i386
+            
             mkdir -p build && cd build
             CC=clang CXX=clang++ cmake .. \
               -DENABLE_DEV_PATHS=OFF \
@@ -53,7 +56,7 @@ jobs:
       - name: Subir Binarios
         uses: actions/upload-artifact@v4
         with:
-          name: mcpelauncher-qt5-debian13
+          name: mcpelauncher-qt5-32bit
           path: |
             build/mcpelauncher-client
             build/mcpelauncher-ui-qt/mcpelauncher-ui-qt
