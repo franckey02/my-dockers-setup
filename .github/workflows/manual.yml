@@ -1,65 +1,63 @@
-name: Build MCPELauncher Ubuntu
+name: Compilar mcpelauncher 32bit(Qt5 - Manifest Repo)
 
 on:
   push:
-    branches: [ master, main ]
-  pull_request:
-    branches: [ master, main ]
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
-  build-ubuntu:
-    # Se utiliza 22.04 por su mayor compatibilidad con librerías i386 (32-bit)
-    runs-on: ubuntu-22.04
-
+  build:
+    runs-on: ubuntu-latest
+    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: recursive
+      - name: Clonar Manifiesto 
+        uses: actions/checkout@v4
+        with:
+          repository: 'minecraft-linux/mcpelauncher-manifest'
+          ref: 'ng'
+          submodules: 'recursive'
+          fetch-depth: 0 # Necesario para encontrar commits antiguos si no están en el headless actual
 
-    - name: Configure i386 Architecture
-      run: |
-        sudo dpkg --add-architecture i386
-        sudo apt-get update
+      - name: Aplicar commit específico
+        run: git checkout 36582b9
 
-    - name: Install Essential Build Tools
-      run: |
-        sudo apt-get install -y \
-          cmake gcc-multilib g++-multilib \
-          zlib1g-dev:i386 libx11-dev:i386 libzip-dev:i386 \
-          libpng-dev:i386 libcurl4-openssl-dev:i386 libssl-dev:i386 \
-          libgles2-mesa-dev:i386 libudev-dev:i386 libevdev-dev:i386 \
-          libegl1-mesa-dev:i386
+      - name: Descargar Dockerfile de construcción
+        run: |
+          curl -L https://github.com/franckey02/my-dockers-setup/raw/refs/heads/main/Dockerfile32.build -o Dockerfile.build
 
-    - name: Install CEF & First Time Setup Dependencies
-      run: |
-        # Intentamos instalar las dependencias de Xbox Live y Protobuf
-        # Nota: libgconf2-4 y libgtkglext1 pueden ser problemáticas en versiones nuevas,
-        # se instalan por separado para no romper el flujo principal si fallan.
-        sudo apt-get install -y \
-          libgtk2.0-0:i386 libasound2:i386 libnss3:i386 \
-          libxss1:i386 libxtst6:i386 libudev1:i386 \
-          protobuf-compiler libprotobuf-dev:i386 || true
-        
-        sudo apt-get install -y libgtkglext1:i386 libgconf2-4:i386 || echo "Librerías legacy opcionales no encontradas"
+      - name: Construir imagen de entorno
+        run: docker build -t mcpelauncher-builder -f Dockerfile.build .
 
-    - name: Run Setup Scripts
-      run: |
-        chmod +x download_icon.sh setup_bin_libs.sh
-        ./download_icon.sh
-        ./setup_bin_libs.sh
+      - name: Compilación con Clang y Optimizaciones
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/project mcpelauncher-builder /bin/bash -c "
+            mkdir -p build && cd build
+            CC=clang CXX=clang++ cmake .. \
+              -DENABLE_DEV_PATHS=OFF \
+              -DBUILD_UI=ON \
+              -DBUILD_CLIENT=ON \
+              -DCURL_EXT_EXTRA_OPTIONS=-DCURL_USE_LIBPSL=OFF \
+              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_C_FLAGS='-m32' \
+              -DCMAKE_CXX_FLAGS='-m32' \
+              -DCMAKE_EXE_LINKER_FLAGS='-m32' \
+              -DCMAKE_FIND_ROOT_PATH='/usr/lib/i386-linux-gnu;/usr/include/i386-linux-gnu' \
+              -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+              -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+              -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+              -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+              -Wno-dev
+            make -j$(nproc)
+          "
 
-    - name: Compile
-      run: |
-        mkdir build
-        cd build
-        cmake ..
-        make -j$(nproc)
-
-    - name: Upload Binary
-      uses: actions/upload-artifact@v4
-      with:
-        name: mcpelauncher-ubuntu-i386
-        path: |
-          build/mcpelauncher
-          build/*.so
+      - name: Subir Binarios
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcpelauncher-qt5-debian13
+          path: |
+            build/mcpelauncher-client
+            build/mcpelauncher-ui-qt/mcpelauncher-ui-qt
+            build/mcpelauncher-webview
+            build/mcpelauncher-error
+            build/mcpelauncher-extract
+          if-no-files-found: warn
