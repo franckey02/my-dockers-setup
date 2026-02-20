@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential git curl cmake clang ninja-build \
     # Qt5 base y módulos comunes (amd64)
     qtbase5-dev qtbase5-dev-tools qtdeclarative5-dev qttools5-dev libqt5svg5-dev \
+    qtwebengine5-dev:i386 \
     # Otras dependencias comunes (amd64)
     libcurl4-openssl-dev libssl-dev libasound2-dev libpulse-dev libjack-jackd2-dev \
     libx11-dev libxi-dev libxext-dev libxfixes-dev libxcursor-dev libxrandr-dev \
